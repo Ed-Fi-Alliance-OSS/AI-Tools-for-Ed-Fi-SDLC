@@ -57,6 +57,7 @@ GitHub Actions come in three types - your review approach differs by type:
 - [ ] `runs.using`: Is it JavaScript, Docker, or composite? (JavaScript and composite are faster to audit)
 - [ ] `runs.main`: What file executes first? Verify it exists and is what you expect
 - [ ] `inputs`: Are inputs documented? Do they accept sensitive values (tokens, passwords)?
+- [ ] `outputs`: Are outputs documented? Could any output leak secret-derived values into downstream steps (e.g., echoing a token or a value computed from one)?
 - [ ] `permissions`: Does the action request only necessary permissions?
   - Common dangerous permissions: `contents: write`, `id-token: write`, `secrets: read` (not standard but dangerous if present)
   - Legitimate permissions: `contents: read`, `issues: read`, `pull-requests: read`
@@ -86,7 +87,8 @@ Function(input)
 
 // ❌ Environment variable injection
 process.env['SECRET_NAME'] = userInput
-setSecret(userInput)  // Masking user-controlled input
+// ❌ Masking attacker-controlled values hides their exfiltration from logs
+core.setSecret(userInput)
 
 // ❌ Unvalidated file operations
 fs.writeFileSync(`/data/${input}/file.txt`)  // Path traversal
@@ -106,21 +108,30 @@ require(userInput)    // Dynamic imports
 **Check for:**
 - [ ] Base image: Is it from an official, trusted registry? (scratch, ubuntu, alpine, official language images)
 - [ ] User permissions: Does it run as root? (should use `USER nobody` or `USER 1000`)
+- [ ] Capabilities & privilege: Does `action.yml` or the Dockerfile grant elevated capabilities? Red flags: `--privileged`, `--cap-add=SYS_ADMIN` (or any `cap-add`), mounting `/var/run/docker.sock` (container escape to the host Docker daemon), mounting host `/`, `/etc`, or `$HOME`.
 - [ ] Layer inspection: Are secrets or credentials built into layers? (should be passed at runtime)
 - [ ] Entrypoint: Does it execute a script? Verify that script matches the `action.yml` reference
 
 **Red flags:**
 ```dockerfile
-# ❌ DANGEROUS: Runs as root
+# ❌ DANGEROUS: Runs as root, no filesystem restrictions
 FROM python:3.9
 RUN pip install ...
 ENTRYPOINT ["python", "app.py"]
 
-# ✅ GOOD: Non-root user
-FROM python:3.9
-RUN useradd -u 1000 worker
+# ✅ GOOD: Non-root user, minimal base, deps installed before dropping privileges
+FROM python:3.9-slim
+RUN pip install --no-cache-dir ... \
+ && useradd -u 1000 -r -s /sbin/nologin worker
 USER worker
 ENTRYPOINT ["python", "app.py"]
+```
+
+Docker socket mount is especially dangerous:
+```yaml
+# ❌ CRITICAL: Container can control the host Docker daemon → host compromise
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
 ```
 
 ### 4. Language-Specific Entrypoint
@@ -160,14 +171,26 @@ require('child_process').execFile('/path/to/binary', [input], callback)
 **Check for:**
 - [ ] Direct dependencies: Are they from trusted sources (npm, PyPI)?
 - [ ] Pinned versions: Are dependencies pinned (not `@latest` or `*`)?
+- [ ] Lockfile present and committed: `package-lock.json` / `yarn.lock` / `Pipfile.lock` / `go.sum`. A missing lockfile means transitive versions drift between installs — unreviewable.
+- [ ] Action references pinned to **commit SHA, not tag**: `uses: owner/name@<40-char-sha>` not `@v1`. Tags can be moved to point at malicious commits after your review.
+- [ ] Post-install / lifecycle scripts: `package.json` `scripts.preinstall`, `postinstall`, `prepare`; `setup.py` custom `cmdclass`; Ruby `extconf.rb`; Go `//go:generate`. These run automatically during dependency install and are a well-known supply-chain attack vector.
 - [ ] Transitive dependencies: Do you recognize the major dependencies?
 - [ ] Frequency of updates: Abandoned projects are risky
 
+**Red flag — post-install exfiltration:**
+```json
+// ❌ package.json
+"scripts": {
+  "postinstall": "node ./scripts/telemetry.js"
+}
+```
+Open `scripts/telemetry.js` and verify it does nothing network-bound.
+
 **Files to review:**
-- `package.json` (Node.js)
-- `requirements.txt` (Python)
-- `Gemfile` (Ruby)
-- `go.sum` (Go)
+- `package.json` + `package-lock.json` / `yarn.lock` (Node.js)
+- `requirements.txt` + `Pipfile.lock` / `poetry.lock` (Python)
+- `Gemfile` + `Gemfile.lock` (Ruby)
+- `go.mod` + `go.sum` (Go)
 
 ### 6. Environment and Secret Access
 
@@ -189,6 +212,29 @@ const secret = process.env.UNDOCUMENTED_SECRET
 const octokit = new Octokit({ auth: token })
 octokit.rest.repos.get(...)
 ```
+
+**Secret logging & artifact/PR-comment exfiltration:**
+
+Stdout and stderr land in the workflow log. Any secret (or value derived from one) written there is recoverable by anyone with read access to workflow runs.
+
+```javascript
+// ❌ Secret printed to workflow log
+console.log(`Using token: ${token}`)
+console.log(JSON.stringify(process.env))     // dumps everything
+core.debug(secret)                           // debug logs are still logs
+
+// ❌ Secret posted to a PR (world-readable on public repos)
+octokit.rest.issues.createComment({ body: `debug: ${token}` })
+
+// ❌ Secret written into an uploaded artifact
+fs.writeFileSync('debug.log', `token=${token}`)
+// followed by actions/upload-artifact
+
+// ❌ Derived values leak too (base64, hash prefixes, JWT payload)
+console.log(Buffer.from(token).toString('base64'))
+```
+
+Check every `console.log` / `print` / `echo`, every `createComment` / `createIssue` body, and every file path that ends up in `upload-artifact`. Trace backward to confirm none of them carry secret-derived data.
 
 ### 7. Network and External Calls
 
@@ -304,8 +350,8 @@ exec('docker', ['build', '-t', imageName, '.'])
 
 **After review, clean up immediately:**
 ```bash
-# Return to original directory
-cd /
+# Return to previous directory
+cd -
 
 # Remove temp directory
 rm -rf "$TEMP_DIR"
@@ -394,7 +440,7 @@ EOF
 | Node.js | `child_process.exec()` | Command injection |
 | Bash | `eval` | Command injection |
 | Bash | `` ` `` backticks without quotes | Command injection |
-| All | `// require(userInput)` | Arbitrary imports |
+| All | `require(userInput)` / dynamic import | Arbitrary imports |
 | All | `os.system()` or exec with user input | Command injection |
 
 ## Report Structure
@@ -416,6 +462,26 @@ When documenting findings:
 [Code snippet showing the issue]
 
 **Recommendation:** How should it be fixed?
+```
+
+### Decision
+
+Every review ends with one of three outcomes, recorded alongside the findings:
+
+- **Approved** — No CRITICAL/HIGH findings; action can be used as published.
+- **Approved with constraints** — Action is safe only under specific caller-workflow conditions. Record the constraints, e.g.:
+  - Caller workflow must set `permissions: contents: read` (no write).
+  - Must not be invoked from workflows that have access to `secrets.*` beyond `GITHUB_TOKEN`.
+  - Pin to the reviewed commit SHA only; re-review on any version bump.
+  - Run only in jobs without `id-token: write`.
+- **Rejected** — CRITICAL findings, or MEDIUM/HIGH findings that cannot be mitigated by caller constraints. Do not add to the allowlist.
+
+Template:
+```
+**Decision:** Approved / Approved with constraints / Rejected
+**Reviewed version:** vX.Y.Z (<40-char commit SHA>)
+**Constraints applied:** [list, or "none"]
+**Rationale:** [one or two sentences tying the decision to the findings]
 ```
 
 ## Common Mistakes
