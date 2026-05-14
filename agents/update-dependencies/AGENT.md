@@ -47,6 +47,14 @@ If no mode is provided, ask the user:
 
 ## Phase 1: Baseline Check
 
+Detect the build and test commands by inspecting the project:
+
+- **JavaScript**: check `package.json` `scripts` for `build` and `test` (or `test:ci`) keys; run both
+- **Python**: check for `pytest.ini`, `pyproject.toml [tool.pytest.ini_options]`, or `tox.ini`; run `pytest` or `tox` accordingly
+- **.NET**: run `dotnet build`, then `dotnet test --no-build`
+
+If uncertain, check the project README for a "build" or "test" section before proceeding.
+
 Run the project's build and test suite. If they fail, **stop immediately**
 and report:
 
@@ -68,6 +76,8 @@ Scan for ecosystem indicators:
 | `*.csproj` or `Directory.Packages.props` | .NET | dotnet |
 
 Report which ecosystems were detected before continuing. Process all of them.
+
+If both `requirements.txt` and a `uv.lock` file (or `[tool.uv]` section in `pyproject.toml`) exist, use uv. Otherwise use pip.
 
 ## Phase 3: Discover Outdated and Vulnerable Packages
 
@@ -108,40 +118,24 @@ Before any manual updates, run the ecosystem's auto-fix tool:
 npm audit fix
 ```
 
-**Python:**
+**Python (pip / uv):**
 ```bash
 pip-audit --fix
 ```
 
+**Python (poetry):** `pip-audit --fix` calls `pip install` internally and does not update `poetry.lock`, which would desync the lockfile. **Skip auto-fix for Poetry projects** and proceed directly to Phase 5 (Triage).
+
 Re-run the audit after auto-fix to see what remains unresolved. The rest of
 the workflow applies only to packages that remain unresolved after auto-fix.
 
-## Phase 5: Verify Versions Before Writing
-
-For every package you plan to update manually, query the registry to confirm
-the target version exists. Never write a version string from memory.
-
-**JavaScript:**
+If auto-fix made any changes, commit them before continuing:
 ```bash
-npm view <package> versions --json
+git add -A
+git commit -m "deps: auto-fix security vulnerabilities"
 ```
+Re-run the audit to confirm what remains unresolved.
 
-**Python:**
-```bash
-pip index versions <package>
-```
-
-**.NET:**
-```bash
-dotnet package search <Name> --exact-match
-```
-
-**.NET version-lock rule:** `Microsoft.*` packages (e.g., all
-`Microsoft.Extensions.*`) must be updated to the same version together.
-Ecosystem packages (Npgsql, Serilog sinks, AutoMapper) follow independent
-cadences — verify each individually.
-
-## Phase 6: Triage Remaining Updates
+## Phase 5: Triage Remaining Updates
 
 Categorize all unresolved packages:
 
@@ -158,6 +152,34 @@ Which categories proceed depends on your mode:
 | `--security-only` | ✅ apply | ❌ skip | ❌ skip |
 | `--minor` | ✅ apply | ✅ apply | 🔍 research only (Phase 8) |
 | `--all` | ✅ apply | ✅ apply | ⏸ handoff to user (Phase 8) |
+
+## Phase 6: Verify Versions Before Writing
+
+For every package you determined in Phase 5 that you will update manually, query the registry to confirm the target version exists before writing it.
+
+**JavaScript:**
+```bash
+npm view <package> versions --json
+```
+
+**Python:**
+```bash
+pip index versions <package>
+```
+
+(Note: `pip index` is marked experimental. An alternative is `pip install <package>==nonexistent 2>&1` which prints available versions in the error output.)
+
+**.NET:**
+```bash
+dotnet package search <Name> --exact-match
+```
+
+(`dotnet package search` requires .NET SDK 8+. If unavailable, `dotnet list package --outdated` output already includes available versions.)
+
+**.NET version-lock rule:** `Microsoft.*` packages (e.g., all
+`Microsoft.Extensions.*`) must be updated to the same version together.
+Ecosystem packages (Npgsql, Serilog sinks, AutoMapper) follow independent
+cadences — verify each individually.
 
 ## Phase 7: Apply Updates and Verify
 
@@ -180,8 +202,14 @@ After each group:
 
 1. Run build + tests
 2. If **green**: commit, then continue to next group
-3. If **broken**: run `git revert HEAD` to undo the group; log the failure
-   (package name + error summary); continue with the next group
+3. If **broken**: discard the changes with:
+   ```bash
+   git restore .
+   git clean -fd
+   ```
+   Log the failure (package name + error summary) and continue with the next group.
+
+When evaluating build output, see the 'Warnings Are Blockers' section below.
 
 **Commit message formats:**
 
@@ -216,8 +244,7 @@ For each major bump not applied in Phase 7:
 > Options: **apply** (I'll attempt migration now), **skip** (note in PR),
 > **abort** (stop the run and open PR with what's been done so far)"
 
-- **apply**: attempt migration, run build + tests, commit if green, revert
-  and log as failure if broken
+- **apply**: update the version in the manifest, then update any code usages identified in the breaking-change scan above (changed APIs, removed methods, new required configuration). Run build + tests. Commit if green. If any breaking-change code cannot be confidently updated, discard changes with `git restore . && git clean -fd` and log as failure.
 - **skip**: record in the PR body under "Majors available but not applied"
 - **abort**: proceed immediately to Phase 9
 
@@ -234,11 +261,19 @@ Branch naming:
 - `--security-only`: `deps/security-YYYY-MM-DD`
 - `--minor` or `--all`: `deps/YYYY-MM-DD`
 
+(Replace YYYY-MM-DD with today's date in ISO 8601 format, e.g., `$(date +%Y-%m-%d)`.)
+
 ```bash
+git checkout -b <branch-name>
 git push -u origin <branch-name>
-gh pr create --draft \
-  --title "deps: update dependencies YYYY-MM-DD" \
-  --body "$(cat <<'EOF'
+```
+
+If you are already on a correctly-named `deps/` branch, skip the checkout step.
+
+```bash
+# Write PR body to temp file to avoid shell quoting issues
+BODY_FILE=$(mktemp)
+cat > "$BODY_FILE" <<'EOF'
 ## Dependency Updates
 
 ### Applied Updates
@@ -267,7 +302,11 @@ gh pr create --draft \
 ---
 🤖 Generated by the update-dependencies agent
 EOF
-)"
+
+gh pr create --draft \
+  --title "deps: update dependencies $(date +%Y-%m-%d)" \
+  --body-file "$BODY_FILE"
+rm "$BODY_FILE"
 ```
 
 Populate each table from the actual results of the run. Omit empty sections
