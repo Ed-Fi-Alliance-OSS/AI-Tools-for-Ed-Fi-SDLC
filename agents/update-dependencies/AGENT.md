@@ -125,15 +125,12 @@ pip-audit --fix
 
 **Python (poetry):** `pip-audit --fix` calls `pip install` internally and does not update `poetry.lock`, which would desync the lockfile. **Skip auto-fix for Poetry projects** and proceed directly to Phase 5 (Triage).
 
-Re-run the audit after auto-fix to see what remains unresolved. The rest of
-the workflow applies only to packages that remain unresolved after auto-fix.
-
 If auto-fix made any changes, commit them before continuing:
 ```bash
-git add -A
-git commit -m "deps: auto-fix security vulnerabilities"
+git diff --quiet && git diff --cached --quiet || \
+  git commit -am "deps: auto-fix security vulnerabilities"
 ```
-Re-run the audit to confirm what remains unresolved.
+Re-run the audit to confirm what remains unresolved before continuing.
 
 ## Phase 5: Triage Remaining Updates
 
@@ -261,11 +258,10 @@ Branch naming:
 - `--security-only`: `deps/security-YYYY-MM-DD`
 - `--minor` or `--all`: `deps/YYYY-MM-DD`
 
-(Replace YYYY-MM-DD with today's date in ISO 8601 format, e.g., `$(date +%Y-%m-%d)`.)
-
 ```bash
-git checkout -b <branch-name>
-git push -u origin <branch-name>
+BRANCH="deps/$(date +%Y-%m-%d)"   # use deps/security-$(date +%Y-%m-%d) for --security-only mode
+git checkout -b "$BRANCH"
+git push -u origin "$BRANCH"
 ```
 
 If you are already on a correctly-named `deps/` branch, skip the checkout step.
@@ -273,6 +269,7 @@ If you are already on a correctly-named `deps/` branch, skip the checkout step.
 ```bash
 # Write PR body to temp file to avoid shell quoting issues
 BODY_FILE=$(mktemp)
+# (If `mktemp` is unavailable, use a fixed path such as `/tmp/pr-body.md` instead, and delete it after the `gh pr create` call.)
 cat > "$BODY_FILE" <<'EOF'
 ## Dependency Updates
 
