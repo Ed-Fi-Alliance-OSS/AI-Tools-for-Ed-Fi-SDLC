@@ -37,15 +37,17 @@ Tell the agent which mode to run:
 | `--minor` | Security patches + minor/patch bumps; majors researched and reported in PR but not applied |
 | `--all` | Full run; pauses to ask you about each major version bump before applying |
 
+If you don't specify a mode, the agent will ask before proceeding.
+
 **Example invocations:**
 
-- "Run the update-dependencies agent with --security-only"
+- "Patch all vulnerable packages with --security-only"
 - "Update all dependencies, mode --minor"
 - "Run dependency updates --all"
 
 ## What the Agent Produces
 
-- A `deps/YYYY-MM-DD` branch with one commit per logical package group
+- A `deps/YYYY-MM-DD` branch (`deps/security-YYYY-MM-DD` for `--security-only`) with one commit per logical package group
 - A draft PR with a summary table of all changes, CVEs patched, and any
   majors deferred
 - A report of any packages that failed to update and why
