@@ -133,6 +133,44 @@ The agent requires a mode to be specified at invocation. The skill wrapper surfa
 | Major version changelog unreachable | Flag in the Phase 8 handoff message; user is informed the summary may be incomplete |
 | PR creation fails | Report the branch name and a full summary so the user can open the PR manually |
 
+## Tool Trust Configuration
+
+### Claude Code (AGENT.md frontmatter)
+
+The agent requires several CLI tools to run without user approval at each invocation. This is configured in two complementary ways in the `AGENT.md` frontmatter:
+
+**`permissionMode: bypassPermissions`** — Since this agent is explicitly invoked by the user for a well-defined purpose, bypassing per-call permission prompts is appropriate. The user's act of invoking the agent is the approval.
+
+**`tools` allowlist** — Restricts the agent to only the tools it actually needs, preventing scope creep:
+
+```yaml
+---
+name: update-dependencies
+description: ...
+permissionMode: bypassPermissions
+tools: >
+  Bash(npm *),
+  Bash(pip *),
+  Bash(pip-audit *),
+  Bash(poetry *),
+  Bash(uv *),
+  Bash(dotnet *),
+  Bash(git *),
+  Bash(gh *),
+  Read,
+  Write,
+  Edit,
+  Glob,
+  Grep
+---
+```
+
+The combination of `bypassPermissions` + explicit `tools` allowlist means: all calls within that list are auto-approved; calls outside it are denied.
+
+### GitHub Copilot
+
+GitHub Copilot skills do not have an equivalent per-command trust mechanism. The thin `SKILL.md` wrapper should note that users may be prompted to approve tool calls during execution, and that this is expected behavior.
+
 ## Files Created
 
 | Path | Description |
