@@ -32,6 +32,28 @@ skills add https://github.com/Ed-Fi-Alliance-OSS/AI-Tools-for-Ed-Fi-SDLC -g --ag
 > [!WARNING]
 > Make sure to review third-party skills carefully before installing, especially with global installations, to ensure they are from a trusted source and do not contain malicious code.
 
+### Installing GitHub Copilot CLI Custom Agents
+
+Agents in the `agents/` directory with an `.agent.md` extension can be used as [GitHub Copilot CLI custom agents](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli). To make an agent available globally across all your repositories, copy it to your user-level agents directory:
+
+**macOS / Linux:**
+```bash
+mkdir -p ~/.copilot/agents
+cp agents/update-dependencies/update-dependencies.agent.md ~/.copilot/agents/
+```
+
+**Windows (PowerShell):**
+```powershell
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.copilot\agents"
+Copy-Item agents\update-dependencies\update-dependencies.agent.md "$env:USERPROFILE\.copilot\agents\"
+```
+
+After copying, restart the Copilot CLI to load the new agent. You can then invoke it with `/agent` or by name:
+
+```
+copilot --agent update-dependencies --prompt "--minor"
+```
+
 ### Authoring Skills
 
 - All skills in this repository are intended for use in the Ed-Fi Alliance software development lifecycle.
