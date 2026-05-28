@@ -138,14 +138,17 @@ acli jira workitem comment update --key PROJ-123 --id 10001 --body "Team update"
 # See available link types
 acli jira workitem link type
 
-# Create a link
-acli jira workitem link create --key PROJ-123 --link "blocks" --target PROJ-456
+# Create a link (outward issue blocks inward issue)
+acli jira workitem link create --out PROJ-123 --in PROJ-456 --type Blocks
+
+# Create multiple links from JSON
+acli jira workitem link create --from-json links.json
 
 # List links on an item
 acli jira workitem link list --key PROJ-123
 
 # Delete a link
-acli jira workitem link delete --key PROJ-123 --link "blocks" --target PROJ-456
+acli jira workitem link delete --out PROJ-123 --in PROJ-456 --type Blocks
 ```
 
 ### Attachments
