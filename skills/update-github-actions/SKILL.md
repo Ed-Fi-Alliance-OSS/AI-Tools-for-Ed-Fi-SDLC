@@ -52,12 +52,19 @@ For any action found in the workflow files whose `actionLink` begins with `actio
 - The page redirects to the actual release URL (e.g., `.../releases/tag/v4.2.2`) — extract the tag from that URL
 - Find the commit SHA pinned to that release tag (shown on the release page)
 
-**`github/codeql-action`** (special case — multiple major versions maintained simultaneously):
+**`github/codeql-action`** (special case — always track the `v4.*` line, regardless of what's currently pinned):
 
-- Detect the major version currently pinned in the workflow (e.g., `v4` from the `# v4.x.y` tag comment)
 - Fetch `https://github.com/github/codeql-action/releases` using WebFetch
-- Find the most recent release matching that same major (e.g., `v4.x`); extract tag and commit SHA
-- If no release exists for the pinned major, fall back to the overall latest release and **flag this as a major-version bump** in the report — the human reviewer should confirm before merging
+- Find the most recent release matching major `v4` (e.g., `v4.x`); extract tag and commit SHA
+- Use this `v4.x` release even if the workflow is currently pinned to a different major — this is not treated as a major-version bump requiring review, since `v4` is the intended target for this action
+- If no `v4.x` release exists at all, leave the reference unchanged and record it as a **fetch failure** in the report
+
+**`github/codeql-action-automation`** (special case — always track the `v4.*` line, regardless of what's currently pinned):
+
+- Fetch `https://github.com/github/codeql-action-automation/releases` using WebFetch
+- Find the most recent release matching major `v4` (e.g., `v4.x`); extract tag and commit SHA
+- Use this `v4.x` release even if the workflow is currently pinned to a different major — this is not treated as a major-version bump requiring review, since `v4` is the intended target for this action
+- If no `v4.x` release exists at all, leave the reference unchanged and record it as a **fetch failure** in the report
 
 Once resolved, these GitHub-native versions are merged into the latest-version map and used in the same update pass as allowlist entries.
 
@@ -111,7 +118,7 @@ After processing all files, organize the report into these sections:
 - **Skipped (unknown)** — actions not in the allowlist and not `actions/*` / `github/*`
 - **Blocked (deprecated with no replacement)** — actions whose only allowlist entries are all `deprecated: true`; requires human decision to replace or remove
 - **Unpinned (tag/branch ref)** — `uses:` lines without a 40-char SHA; drift from Ed-Fi pinning convention
-- **Major-version bumps** — any `codeql-action` fallback or similar cross-major jumps flagged for review
+- **Major-version bumps** — any cross-major jumps flagged for review (e.g., a standard `actions/*`/`github/*` action whose latest release crosses a major version)
 - **Fetch failures** — GitHub release pages that could not be retrieved; those refs were left unchanged
 
 ## Edge Cases
@@ -120,7 +127,8 @@ After processing all files, organize the report into these sections:
 |-----------|----------|
 | Action not in approved.json and not a GitHub-native action | Leave unchanged |
 | GitHub-native action (`actions/*` or `github/*`) | Look up latest release on GitHub instead of allowlist |
-| `github/codeql-action` | Fetch releases page; use latest `v4.x` release |
+| `github/codeql-action` | Fetch releases page; always use latest `v4.x` release regardless of currently-pinned major |
+| `github/codeql-action-automation` | Fetch releases page; always use latest `v4.x` release regardless of currently-pinned major |
 | GitHub release page fetch fails | Leave unchanged; report the failure |
 | Action already at latest SHA | Leave unchanged |
 | All non-deprecated entries share same SHA | Still treat last as latest |
