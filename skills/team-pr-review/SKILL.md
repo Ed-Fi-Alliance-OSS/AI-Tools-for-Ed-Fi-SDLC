@@ -1,6 +1,7 @@
 ---
 description: Launches a fleet of five specialist subagents to deeply review a pull request across security, functionality, maintainability, usability, and test coverage. Provide the PR number and optional related Issue number to get a severity-ranked summary of all findings.
 name: team-pr-review
+allowed-tools: Bash(gh *), Bash(git *), Read, Glob, Grep
 ---
 
 # Team PR Review
@@ -45,6 +46,12 @@ All five specialists use this shared rubric. Consistency matters more than indiv
 | **Nit**      | Inconsequential. Author may ignore.            | Naming preference, style inconsistency, trivial suggestion                              |
 
 ## Process
+
+### Tooling Constraints
+
+- Use only `gh` and `git` CLI commands that are listed in this skill.
+- Do not use tools outside the approved set unless the user explicitly asks.
+- If a required command is unavailable, stop and report the missing prerequisite.
 
 ### Step 0: Preflight Checks
 
