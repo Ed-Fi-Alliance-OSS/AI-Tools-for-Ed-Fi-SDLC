@@ -49,18 +49,18 @@ Before launching any subagents, the main thread fetches:
 
 1. **PR details** — title, description, diff, changed files:
    ```
-   gh pr view <PR_NUMBER> --json title,body,files,commits
-   gh pr diff <PR_NUMBER>
+  gh pr view {{PR_NUMBER}} --json title,body,files,commits
+  gh pr diff {{PR_NUMBER}}
    ```
 
 2. **Issue details** — title, body, acceptance criteria:
    ```
-   gh issue view <ISSUE_NUMBER> --json title,body,comments
+  gh issue view {{ISSUE_NUMBER}} --json title,body,comments
    ```
 
 3. **Worktree checkout** — check out the PR branch in a git worktree so specialists can read the full codebase in context:
    ```
-   gh pr checkout <PR_NUMBER> --detach
+  gh pr checkout {{PR_NUMBER}} --detach
    ```
    If worktree creation fails (e.g., the branch is already checked out), proceed with the diff alone and note the limitation.
 
@@ -89,13 +89,13 @@ You are a security-focused code reviewer. Your job is to find security vulnerabi
 in this pull request.
 
 ISSUE CONTEXT:
-<issue body>
+{{ISSUE_BODY}}
 
 PR DESCRIPTION:
-<pr description>
+{{PR_DESCRIPTION}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - OWASP Top 10 vulnerabilities (injection, broken auth, sensitive data exposure,
@@ -131,13 +131,13 @@ You are a functionality-focused code reviewer. Your job is to verify that this
 pull request correctly and completely implements the requirements in the linked issue.
 
 ISSUE CONTEXT (these are the requirements):
-<issue body>
+{{ISSUE_BODY}}
 
 PR DESCRIPTION:
-<pr description>
+{{PR_DESCRIPTION}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Requirements coverage: does the PR implement everything described in the issue?
@@ -171,10 +171,10 @@ You are a maintainability-focused code reviewer. Your job is to find code that
 will be difficult to maintain, extend, or debug over time.
 
 ISSUE CONTEXT:
-<issue body>
+{{ISSUE_BODY}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Duplication: is non-trivial logic repeated? Would a future change require
@@ -213,13 +213,13 @@ from the perspective of the end user — the person who will interact with the s
 not the developer who built it.
 
 ISSUE CONTEXT (what the user needs):
-<issue body>
+{{ISSUE_BODY}}
 
 PR DESCRIPTION:
-<pr description>
+{{PR_DESCRIPTION}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Error surfaces: when something goes wrong, does the user receive a clear,
@@ -258,10 +258,10 @@ You are a test coverage-focused code reviewer. Your job is to evaluate whether
 the tests accompanying this pull request adequately cover the new and changed behavior.
 
 ISSUE CONTEXT:
-<issue body>
+{{ISSUE_BODY}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Coverage of the happy path: is the primary success scenario tested?
@@ -299,9 +299,10 @@ Once all five agents have responded, the main thread produces a consolidated rep
 **Format the report as follows:**
 
 ```markdown
-# PR #<N> Review — <PR Title>
-> Issue #<N>: <Issue Title>
-> Reviewed by: Security · Functionality · Maintainability · Usability · Test Coverage
+# PR #{{PR_NUMBER}} Review — {{PR_TITLE}}
+> Issue #{{ISSUE_NUMBER}}: {{ISSUE_TITLE}}
+> Reviewed by: {{LLM_MODEL}}
+> Specialist agents: Security · Functionality · Maintainability · Usability · Test Coverage
 
 ---
 
@@ -329,16 +330,16 @@ Once all five agents have responded, the main thread produces a consolidated rep
 ## Specialist Verdicts
 | Reviewer | Verdict |
 |----------|---------|
-| Security | <one-line assessment> |
-| Functionality | COMPLETE / PARTIAL / INCOMPLETE — <one sentence> |
-| Maintainability | <one-line assessment> |
-| Usability | <one-line assessment> |
-| Test Coverage | STRONG / ADEQUATE / WEAK — <one sentence> |
+| Security | {{SECURITY_ASSESSMENT}} |
+| Functionality | COMPLETE / PARTIAL / INCOMPLETE — {{FUNCTIONALITY_VERDICT_REASON}} |
+| Maintainability | {{MAINTAINABILITY_ASSESSMENT}} |
+| Usability | {{USABILITY_ASSESSMENT}} |
+| Test Coverage | STRONG / ADEQUATE / WEAK — {{TEST_COVERAGE_VERDICT_REASON}} |
 
 ---
 
 ## Summary
-<2–3 sentences: the most important things to address before merging, and any notable strengths>
+{{SUMMARY_2_TO_3_SENTENCES}}
 ```
 
 **Ordering rules within each severity tier:**
@@ -358,9 +359,9 @@ After displaying the report, ask the user:
 > - **Edit first** — you can adjust the summary, then I'll post it
 > - **Skip** — keep the report local only
 
-If the user chooses to post, use:
+If the user chooses to post, save the the review as a temporary file to avoid line ending problems and submit with:
 ```
-gh pr comment <PR_NUMBER> --body "<summary>"
+gh pr comment {{PR_NUMBER}} -F {{TEMP_FILE}}
 ```
 
 If the user chooses to edit first, present the raw markdown and wait for their revised version before posting.
@@ -373,6 +374,7 @@ If the user chooses to edit first, present the raw markdown and wait for their r
 | Issue not found | Ask the user to provide the issue body manually, or proceed without it (note the gap) |
 | A specialist agent fails or times out | Note the failure in the relevant specialist's section; do not block the full report |
 | PR has no diff (already merged, wrong number) | Stop and tell the user — do not fabricate a review |
+| Model token not injected | Set `Reviewed by` to `Unknown model` and continue |
 
 ## Anti-Patterns to Avoid
 
