@@ -1,7 +1,7 @@
 ---
 description: Launches a fleet of five specialist subagents to deeply review a pull request across security, functionality, maintainability, usability, and test coverage. Provide the PR number and optional related Issue number to get a severity-ranked summary of all findings.
 name: team-pr-review
-allowed-tools: Bash(gh *), Bash(git *), Read, Glob, Grep
+allowed-tools: Bash(gh *), Bash(git *), Read, Write, Glob, Grep
 ---
 
 # Team PR Review
@@ -49,7 +49,8 @@ All five specialists use this shared rubric. Consistency matters more than indiv
 
 ### Tooling Constraints
 
-- Use only `gh` and `git` CLI commands that are listed in this skill.
+- Use only `gh` and `git` CLI commands that are listed in this skill, plus the `Read`, `Write`, `Glob`, and `Grep` tools.
+- The `Write` tool is used only to save the final report to a temporary local file before posting (Step 4); do not use it to modify repository files.
 - Do not use tools outside the approved set unless the user explicitly asks.
 - If a required command is unavailable, stop and report the missing prerequisite.
 
@@ -399,11 +400,13 @@ After displaying the report, ask the user:
 > - **Edit first** — you can adjust the summary, then I'll post it
 > - **Skip** — keep the report local only
 
-If the user chooses to post, save the review as a temporary file to avoid line ending problems and submit with:
+If the user chooses to post, use the `Write` tool to save the report markdown to a temporary file (e.g. `{{TEMP_FILE}}` = `./.pr-review-{{PR_NUMBER}}.md` in the worktree or current working directory) to avoid line ending and quoting problems, then submit with:
 
 ```
 gh pr comment {{PR_NUMBER}} -F {{TEMP_FILE}}
 ```
+
+Delete the temporary file after posting.
 
 If the user chooses to edit first, present the raw markdown and wait for their revised version before posting.
 

@@ -1,3 +1,2 @@
-# Linux scripts always need to have lf
-*.sh text eol=lf
+# Normalize all text files to LF line endings (includes shell scripts)
 * text=auto eol=lf
