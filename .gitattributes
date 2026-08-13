@@ -1,2 +1,3 @@
 # Linux scripts always need to have lf
 *.sh text eol=lf
+* text=auto eol=lf
