@@ -1,7 +1,9 @@
 ---
-description: Launches a fleet of five specialist subagents to deeply review a pull request across security, functionality, maintainability, usability, and test coverage. Provide the PR number and related Issue number to get a severity-ranked summary of all findings.
+description: Launches a fleet of five specialist subagents to deeply review a pull request across security, functionality, maintainability, usability, and test coverage. Provide the PR number and optional related Issue number to get a severity-ranked summary of all findings.
 name: team-pr-review
+allowed-tools: Bash(gh *), Bash(git *), Read, Write, Glob, Grep
 ---
+
 # Team PR Review
 
 ## Overview
@@ -9,6 +11,7 @@ name: team-pr-review
 Five specialist reviewers examine a pull request in parallel, each through a different lens. Every finding is rated by severity. The main thread aggregates all findings into a single severity-ranked report that the team can act on immediately.
 
 **Trigger phrases:**
+
 - "Review PR #42 against issue #17"
 - "Run team-pr-review on PR #..."
 - "Do a full review of this PR"
@@ -22,80 +25,119 @@ Five specialist reviewers examine a pull request in parallel, each through a dif
 
 ## Required Inputs
 
-| Input | How to Provide |
-|-------|----------------|
-| **PR number** | In the user's message: "PR #42" |
-| **Issue number** | In the user's message: "Issue #17" — the requirement the PR is supposed to fulfill |
+| Input                       | How to Provide                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| **PR number**               | In the user's message: "PR #42"                                                    |
+| **Issue number (optional)** | In the user's message: "Issue #17" — the requirement the PR is supposed to fulfill |
 
-If either is missing, ask for it before proceeding. Do not guess.
+If PR number is missing, ask for it before proceeding. Do not guess.
+If issue number is missing, continue in PR-only mode and note reduced confidence for requirement coverage.
 
 ## Severity Rubric
 
 All five specialists use this shared rubric. Consistency matters more than individual judgment — anchor every rating to this table.
 
-| Rating | Meaning | Example |
-|--------|---------|---------|
-| **Critical** | Blocks merge. Immediate fix required. | Security vulnerability, data loss, auth bypass, broken core flow |
-| **High** | Significant problem. Should fix before merge. | Major requirement not met, missing auth check, crash on likely input |
-| **Medium** | Real issue, but not merge-blocking if tracked. | Code smell that will compound, partial requirement coverage, test gap on important path |
-| **Low** | Minor issue. Fix if cheap, defer if not. | Suboptimal approach with low risk, missing test for edge case |
-| **Nit** | Inconsequential. Author may ignore. | Naming preference, style inconsistency, trivial suggestion |
+| Rating       | Meaning                                        | Example                                                                                 |
+| ------------ | ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Critical** | Blocks merge. Immediate fix required.          | Security vulnerability, data loss, auth bypass, broken core flow                        |
+| **High**     | Significant problem. Should fix before merge.  | Major requirement not met, missing auth check, crash on likely input                    |
+| **Medium**   | Real issue, but not merge-blocking if tracked. | Code smell that will compound, partial requirement coverage, test gap on important path |
+| **Low**      | Minor issue. Fix if cheap, defer if not.       | Suboptimal approach with low risk, missing test for edge case                           |
+| **Nit**      | Inconsequential. Author may ignore.            | Naming preference, style inconsistency, trivial suggestion                              |
 
 ## Process
+
+### Tooling Constraints
+
+- Use only `gh` and `git` CLI commands that are listed in this skill, plus the `Read`, `Write`, `Glob`, and `Grep` tools.
+- The `Write` tool is used only to save the final report to a temporary local file before posting (Step 4); do not use it to modify repository files.
+- Do not use tools outside the approved set unless the user explicitly asks.
+- If a required command is unavailable, stop and report the missing prerequisite.
+
+### Step 0: Preflight Checks
+
+Before gathering review context, verify GitHub CLI access and PR visibility:
+
+1. **GitHub CLI authentication**
+
+```
+gh auth status
+```
+
+2. **PR accessibility**
+
+```
+gh pr view {{PR_NUMBER}} --json title
+```
+
+If either check fails, stop and report the setup issue clearly.
 
 ### Step 1: Gather Context
 
 Before launching any subagents, the main thread fetches:
 
 1. **PR details** — title, description, diff, changed files:
+
    ```
-   gh pr view <PR_NUMBER> --json title,body,files,commits
-   gh pr diff <PR_NUMBER>
+   gh pr view {{PR_NUMBER}} --json title,body,files,commits
+   gh pr diff {{PR_NUMBER}}
    ```
 
-2. **Issue details** — title, body, acceptance criteria:
-   ```
-   gh issue view <ISSUE_NUMBER> --json title,body,comments
-   ```
+2. **Issue details (optional)** — title and body first; fetch comments only if needed for missing or ambiguous acceptance criteria:
 
-3. **Worktree checkout** — check out the PR branch in a git worktree so specialists can read the full codebase in context:
-   ```
-   gh pr checkout <PR_NUMBER> --detach
-   ```
-   If worktree creation fails (e.g., the branch is already checked out), proceed with the diff alone and note the limitation.
+```
+gh issue view {{ISSUE_NUMBER}} --json title,body
+```
 
-Store the PR diff, PR description, and issue body as variables to inject into each specialist's context.
+Optional follow-up (only when needed):
+
+```
+gh issue view {{ISSUE_NUMBER}} --json comments
+```
+
+If no issue number is provided, skip this step and proceed in PR-only mode.
+
+3. **Worktree checkout** — check out the PR in an isolated git worktree so specialists can read the full codebase in context without changing the current branch:
+   ```
+   git fetch origin pull/{{PR_NUMBER}}/head
+   git worktree add --detach ../pr-{{PR_NUMBER}} FETCH_HEAD
+   ```
+   If worktree creation fails, proceed with the diff alone and note the limitation.
+
+Store the PR diff, PR description, and issue body (if available) as variables to inject into each specialist's context.
 
 ### Step 2: Launch Five Specialist Agents in Parallel
 
 Launch all five agents simultaneously. Do not wait for one before starting the next.
 
 Each agent receives:
+
 - The full PR diff
 - The list of changed files
-- The issue title and body (acceptance criteria)
+- The issue title and body (acceptance criteria), when available
 - Their specialist prompt (see below)
-- Access to the full worktree
+- Access to the full worktree, when available
 
----
+If no issue is provided, instruct all specialists to infer intent from PR title/body and explicitly state reduced confidence where requirements are ambiguous.
 
 #### Specialist 1: Security Reviewer
 
 **Goal:** Find vulnerabilities introduced or exposed by this PR.
 
 **Prompt to use:**
+
 ```
 You are a security-focused code reviewer. Your job is to find security vulnerabilities
 in this pull request.
 
 ISSUE CONTEXT:
-<issue body>
+{{ISSUE_BODY}}
 
 PR DESCRIPTION:
-<pr description>
+{{PR_DESCRIPTION}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - OWASP Top 10 vulnerabilities (injection, broken auth, sensitive data exposure,
@@ -119,25 +161,24 @@ Use the severity rubric: Critical / High / Medium / Low / Nit
 End with a one-line overall security assessment.
 ```
 
----
-
 #### Specialist 2: Functionality Reviewer
 
 **Goal:** Verify the PR fulfills the requirements in the linked issue.
 
 **Prompt to use:**
+
 ```
 You are a functionality-focused code reviewer. Your job is to verify that this
 pull request correctly and completely implements the requirements in the linked issue.
 
 ISSUE CONTEXT (these are the requirements):
-<issue body>
+{{ISSUE_BODY}}
 
 PR DESCRIPTION:
-<pr description>
+{{PR_DESCRIPTION}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Requirements coverage: does the PR implement everything described in the issue?
@@ -159,22 +200,21 @@ Use the severity rubric: Critical / High / Medium / Low / Nit
 End with a verdict: COMPLETE / PARTIAL / INCOMPLETE — followed by one sentence of justification.
 ```
 
----
-
 #### Specialist 3: Maintainability Reviewer
 
 **Goal:** Identify code that will be painful to change, debug, or extend.
 
 **Prompt to use:**
+
 ```
 You are a maintainability-focused code reviewer. Your job is to find code that
 will be difficult to maintain, extend, or debug over time.
 
 ISSUE CONTEXT:
-<issue body>
+{{ISSUE_BODY}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Duplication: is non-trivial logic repeated? Would a future change require
@@ -200,26 +240,25 @@ Use the severity rubric: Critical / High / Medium / Low / Nit
 End with a one-line overall maintainability assessment.
 ```
 
----
-
 #### Specialist 4: Usability Reviewer
 
 **Goal:** Evaluate the experience from the user's point of view.
 
 **Prompt to use:**
+
 ```
 You are a usability-focused code reviewer. Your job is to evaluate this pull request
 from the perspective of the end user — the person who will interact with the software,
 not the developer who built it.
 
 ISSUE CONTEXT (what the user needs):
-<issue body>
+{{ISSUE_BODY}}
 
 PR DESCRIPTION:
-<pr description>
+{{PR_DESCRIPTION}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Error surfaces: when something goes wrong, does the user receive a clear,
@@ -246,22 +285,21 @@ Use the severity rubric: Critical / High / Medium / Low / Nit
 End with a one-line overall usability assessment.
 ```
 
----
-
 #### Specialist 5: Test Coverage Reviewer
 
 **Goal:** Determine whether the tests adequately protect the changed behavior.
 
 **Prompt to use:**
+
 ```
 You are a test coverage-focused code reviewer. Your job is to evaluate whether
 the tests accompanying this pull request adequately cover the new and changed behavior.
 
 ISSUE CONTEXT:
-<issue body>
+{{ISSUE_BODY}}
 
 PR DIFF:
-<diff>
+{{PR_DIFF}}
 
 Review the changes for:
 - Coverage of the happy path: is the primary success scenario tested?
@@ -290,8 +328,6 @@ Use the severity rubric: Critical / High / Medium / Low / Nit
 End with a coverage verdict: STRONG / ADEQUATE / WEAK — followed by one sentence of justification.
 ```
 
----
-
 ### Step 3: Aggregate and Summarize
 
 Once all five agents have responded, the main thread produces a consolidated report.
@@ -299,49 +335,54 @@ Once all five agents have responded, the main thread produces a consolidated rep
 **Format the report as follows:**
 
 ```markdown
-# PR #<N> Review — <PR Title>
-> Issue #<N>: <Issue Title>
-> Reviewed by: Security · Functionality · Maintainability · Usability · Test Coverage
+# PR #{{PR_NUMBER}} Review — {{PR_TITLE}}
 
----
+> Issue: {{ISSUE_REFERENCE_OR_NONE}}
+> Reviewed by: {{LLM_MODEL}}
+> Specialist agents: Security · Functionality · Maintainability · Usability · Test Coverage
 
 ## 🔴 Critical
+
 [List all Critical findings from all reviewers, with reviewer label]
+
 - **[Security]** Auth bypass in volunteer endpoint — missing role check on DELETE handler
   Fix: Add `requireRole('admin')` middleware before the handler
 
 [Repeat for each Critical finding. If none: "None found."]
 
 ## 🟠 High
+
 [All High findings, same format]
 
 ## 🟡 Medium
+
 [All Medium findings]
 
 ## 🔵 Low
+
 [All Low findings]
 
 ## ⚪ Nit
+
 [All Nit findings, collapsed or summarized if numerous]
 
----
-
 ## Specialist Verdicts
-| Reviewer | Verdict |
-|----------|---------|
-| Security | <one-line assessment> |
-| Functionality | COMPLETE / PARTIAL / INCOMPLETE — <one sentence> |
-| Maintainability | <one-line assessment> |
-| Usability | <one-line assessment> |
-| Test Coverage | STRONG / ADEQUATE / WEAK — <one sentence> |
 
----
+| Reviewer        | Verdict                                                            |
+| --------------- | ------------------------------------------------------------------ |
+| Security        | {{SECURITY_ASSESSMENT}}                                            |
+| Functionality   | COMPLETE / PARTIAL / INCOMPLETE — {{FUNCTIONALITY_VERDICT_REASON}} |
+| Maintainability | {{MAINTAINABILITY_ASSESSMENT}}                                     |
+| Usability       | {{USABILITY_ASSESSMENT}}                                           |
+| Test Coverage   | STRONG / ADEQUATE / WEAK — {{TEST_COVERAGE_VERDICT_REASON}}        |
 
 ## Summary
-<2–3 sentences: the most important things to address before merging, and any notable strengths>
+
+{{SUMMARY_2_TO_3_SENTENCES}}
 ```
 
 **Ordering rules within each severity tier:**
+
 1. Security findings first
 2. Functionality findings second
 3. Maintainability, Usability, Test Coverage in any order
@@ -354,32 +395,37 @@ After displaying the report, ask the user:
 
 > Would you like me to post this summary as a comment on PR #N?
 > Options:
+>
 > - **Post as-is** — post immediately
 > - **Edit first** — you can adjust the summary, then I'll post it
 > - **Skip** — keep the report local only
 
-If the user chooses to post, use:
+If the user chooses to post, use the `Write` tool to save the report markdown to a temporary file (e.g. `{{TEMP_FILE}}` = `./.pr-review-{{PR_NUMBER}}.md` in the worktree or current working directory) to avoid line ending and quoting problems, then submit with:
+
 ```
-gh pr comment <PR_NUMBER> --body "<summary>"
+gh pr comment {{PR_NUMBER}} -F {{TEMP_FILE}}
 ```
+
+Delete the temporary file after posting.
 
 If the user chooses to edit first, present the raw markdown and wait for their revised version before posting.
 
 ## Failure Handling
 
-| Problem | What to do |
-|---------|-----------|
-| Worktree checkout fails | Proceed with diff-only context; note the limitation in the report header |
-| Issue not found | Ask the user to provide the issue body manually, or proceed without it (note the gap) |
-| A specialist agent fails or times out | Note the failure in the relevant specialist's section; do not block the full report |
-| PR has no diff (already merged, wrong number) | Stop and tell the user — do not fabricate a review |
+| Problem                                       | What to do                                                                                             |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Worktree checkout fails                       | Proceed with diff-only context; note the limitation in the report header                               |
+| Issue not found                               | Ask the user to provide the issue body manually, or continue in PR-only mode (note reduced confidence) |
+| A specialist agent fails or times out         | Note the failure in the relevant specialist's section; do not block the full report                    |
+| PR has no diff (already merged, wrong number) | Stop and tell the user — do not fabricate a review                                                     |
+| Model token not injected                      | Set `Reviewed by` to `Unknown model` and continue                                                      |
 
 ## Anti-Patterns to Avoid
 
 - **Don't launch agents sequentially** — all five must run in parallel. The value of this skill is the parallel fleet.
 - **Don't let severity inflation happen** — anchor every rating to the rubric. "I want to be thorough" is not a reason to call something Critical.
 - **Don't omit the "None found" tiers** — a tier with no findings is signal, not noise. Show it.
-- **Don't merge findings** — if Security and Functionality both flag the same issue, report it once with both reviewer labels.
+- **Don't duplicate findings** — if Security and Functionality both flag the same issue, report it once with both reviewer labels.
 - **Don't post without asking** — always offer the post option, never post automatically.
 
 ## Verification
