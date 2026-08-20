@@ -105,23 +105,32 @@ acli jira workitem transition --filter 10001 --status "To Do" --yes
 ```
 
 ### Comments
+
+For anything beyond a one-line plain-text comment (headings, lists, code spans, emphasis), write the body as JSON in [ADF](./ADF.md) format and pass it via `--body-file` (create) or `--body-adf` (update). Plain `--body`/`--body-file` text renders literally — old Confluence wiki markup like `h3.` or `*bullet*` will NOT be converted, it just shows up as raw text.
+
 ```bash
-# Add a comment
+# Add a plain-text comment
 acli jira workitem comment create --key PROJ-123 --body "Reviewed and looks good."
 
-# Add comment from file
+# Add a comment from a plain-text file
 acli jira workitem comment create --key PROJ-123 --body-file comment.txt
+
+# Add a richly formatted comment (headings/lists/code) from an ADF JSON file
+acli jira workitem comment create --key PROJ-123 --body-file comment-adf.json
 
 # Comment on multiple items via JQL
 acli jira workitem comment create \
   --jql "project = PROJ AND fixVersion = 'v2.0'" \
   --body "Included in v2.0 release."
 
-# List comments
+# List comments (use --json to get comment IDs for update/delete)
 acli jira workitem comment list --key PROJ-123
 
-# Update a comment
+# Update a comment (plain text)
 acli jira workitem comment update --key PROJ-123 --id 10001 --body "Updated note"
+
+# Update a comment with ADF formatting
+acli jira workitem comment update --key PROJ-123 --id 10001 --body-adf comment-adf.json
 
 # Delete a comment
 acli jira workitem comment delete --key PROJ-123 --id 10001
@@ -184,6 +193,6 @@ acli jira auth switch
 - Use `--paginate` on `search` to retrieve all results beyond the default page size.
 - JQL tip: `issuetype in (Bug, Story) AND sprint in openSprints() AND assignee = currentUser()`
 
-## Description Formatting
+## Description and Comment Formatting
 
-Write description bodies as JSON in [ADF](./ADF.md) format
+Write description bodies, and any comment with more than plain text, as JSON in [ADF](./ADF.md) format. Descriptions use `--description-file`; comments use `--body-file` (create) or `--body-adf` (update). Do not use Confluence wiki markup (`h3.`, `*bold*`, etc.) — Jira Cloud comments/descriptions are ADF, not wiki markup, and it will not render.
