@@ -173,7 +173,7 @@ For each match found in Step 3 (after Step 4's exclusion):
 5. **Found, ref is a 40-char SHA that differs** → update the line, replacing both the SHA and
    the comment tag. Preserve original indentation:
    ```
-         uses: <actionLink>@<newSHA> # <newTag>
+         uses: <repo><subpath>@<newSHA> # <newTag>
    ```
 6. **Ref is a tag/branch instead of a 40-char SHA** (e.g. `@v4`, `@main`) → do not rewrite
    automatically; record as an **unpinned reference** — a human should decide the correct
