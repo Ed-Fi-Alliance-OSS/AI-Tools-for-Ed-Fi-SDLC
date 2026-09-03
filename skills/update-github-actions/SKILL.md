@@ -62,14 +62,11 @@ since that would cause every action to be silently skipped (update mode).
 
 ## Step 3: Collect `uses:` references from the repo
 
-Search `.github/workflows/**/*.yml` (and `.github/actions/**/*.yml` if present) for lines
+Search `.github/workflows/**/*.{yml,yaml}` (and `.github/actions/**/action.{yml,yaml}` if present) for lines
 matching:
-```
-^\s*uses:\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+)@([0-9a-f]{40}|[A-Za-z0-9_.\-]+)\s*(?:#\s*(\S+))?
-```
-Group 1 is `actionLink`, group 2 is the pinned ref (SHA or tag/branch), group 3 is the trailing
-`# vX.Y.Z` comment if present. Deduplicate by `(actionLink, ref)` and track which files/lines
-each combo appears in.
+^\s*uses:\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@([0-9a-fA-F]{40}|[A-Za-z0-9_.-]+)\s*(?:#\s*(\S+))?\s*$
+Group 1 is the action **repo** (`org/repo`, which is what `approved.json` keys on), group 2 is an optional action subpath (e.g. `/init`), group 3 is the pinned ref (SHA or tag/branch), group 4 is the trailing `# vX.Y.Z` comment if present. Deduplicate by `((repo + subpath), ref)` and track which files/lines each combo appears in.
+When resolving against the allowlist or GitHub releases, use **group 1**; when updating a `uses:` line, preserve **group 2** if present.
 
 Skip local/relative references (`uses: ./...`) and reusable-workflow refs pointing at a
 `.github/workflows/*.yml` path inside another repo — allowlist keys are action repos, not
