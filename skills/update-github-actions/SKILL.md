@@ -64,7 +64,7 @@ since that would cause every action to be silently skipped (update mode).
 
 Search `.github/workflows/**/*.{yml,yaml}` (and `.github/actions/**/action.{yml,yaml}` if present) for lines
 matching:
-^\s*(?:-\s+)?uses:\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@([0-9a-fA-F]{40}|[A-Za-z0-9_.-]+)\s*(?:#\s*(\S+))?\s*$
+^\s*(?:-\s+)?uses:\s+([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@([0-9a-fA-F]{40}|[A-Za-z0-9_.-]+)\s*(?:#\s*(\S+).*)?$
 Group 1 is the action **repo** (`org/repo`, which is what `approved.json` keys on), group 2 is an optional action subpath (e.g. `/init`), group 3 is the pinned ref (SHA or tag/branch), group 4 is the trailing `# vX.Y.Z` comment if present. Deduplicate by `((repo + subpath), ref)` and track which files/lines each combo appears in.
 When resolving against the allowlist or GitHub releases, use **group 1**; when updating a `uses:` line, preserve **group 2** if present.
 
