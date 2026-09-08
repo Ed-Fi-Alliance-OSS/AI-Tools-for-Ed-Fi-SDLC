@@ -221,14 +221,14 @@ Workflow before:
 ```yaml
 - uses: ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46 # v2.4.0
 - uses: dawidd6/action-download-artifact@80620a5d27ce0ae443b965134db88467fc607b43 # v7
-- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+- uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 - uses: some-org/niche-action@abcdef0123456789abcdef0123456789abcdef01 # v1.0.0
 ```
 
 Version sources:
 - `ossf/scorecard-action` → allowlist: SHA `4eaacf0543bb3f2c246792bd56e8cdeffafb205a`, tag `v2.4.3`
 - `dawidd6/action-download-artifact` → allowlist: SHA `ac66b43f0e6a346234dd65d4d0c8fbb31cb316e5`, tag `v11`
-- `actions/checkout` → not in allowlist; GitHub release → SHA `11bd71901bbe5b1630ceea73d27597364c9af683`, tag `v4.2.2`
+- `actions/checkout` → not in allowlist; GitHub release → SHA `de0fac2e4500dabe0009e67214ff5f5447ce83dd`, tag `v6.0.2`
 - `some-org/niche-action` → not in allowlist and not a GitHub-native action → **skip** (left unchanged)
 
 Workflow after:
