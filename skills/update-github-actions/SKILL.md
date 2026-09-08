@@ -166,8 +166,8 @@ Merge these resolved versions into the latest-version map from Step 5B.
 ### Step 7B: Scan and update each workflow file
 
 For each match found in Step 3 (after Step 4's exclusion):
-1. Extract `actionLink` and current ref.
-2. Look up `actionLink` in the latest-version map.
+1. Extract `repo` (group 1), `subpath` (group 2, absent for most actions), and the current ref (group 3).
+2. Look up `repo` in the latest-version map — the map is keyed on `approved.json`'s `actionLink` (`org/repo`), not on the subpath.
 3. **Not found** → skip (not in the allowlist and not GitHub-native).
 4. **Found, current SHA already matches latest** → skip (already up to date).
 5. **Found, ref is a 40-char SHA that differs** → update the line, replacing both the SHA and
