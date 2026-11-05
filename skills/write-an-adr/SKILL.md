@@ -45,7 +45,7 @@ use a PRD; for an implementation plan use a spec or task breakdown.
 
    Do not state facts from a source you could not read.
 3. **Check for related ADRs.** If this decision amends or replaces an earlier
-   one, follow the lifecycle rules below instead of writing a parallel ADR.
+   one, follow the lifecycle rules below before writing a parallel ADR.
 4. **Ask for what you cannot find.** Usually: the Jira key, the status, which
    service the decision applies to, the author, and the deciders. Ask in one
    message, not one question at a time.
@@ -121,8 +121,7 @@ that hold the detail, such as [Known limitations](#known-limitations).>
 ### Header block
 
 - **Status** is (Proposed | Accepted | Superseded by ADR-XXX | Deprecated)
-- **Date** is ISO 8601. After later events, append them: `2026-06-30 (accepted
-  2026-07-03; last amended 2026-09-30)`.
+- **Date** is ISO 8601.
 - **Deciders** is included when a group signed off: `Development team (signed
   off 2026-07-08).`
 - **Author** names the person, never a guess. Take the name from the user or
@@ -167,13 +166,14 @@ implementation is the source of truth for them.
 
 ## ADR lifecycle
 
-- **Amend in place** when the decision stands but a detail changes. Let git
-  history record the evolution of the ADR rather than creating a new one or
-  describing a change as an amendment.
-- **Supersede** when the decision itself is reversed. Write a new ADR, with the
-  next number, that links to the old one and explains what changed. Change the
-  old ADR's status to `Superseded by [ADR-NNN](./adr-NNN-<new>.md).` Leave the
-  rest of it as written, number included.
+- **Amend in place** when the decision stands but a detail changes before
+  merging to `main`. Let git history record the evolution of the ADR rather than
+  creating a new one or describing a change as an amendment.
+- **Supersede** when the decision itself is reversed or changed after merging to
+  `main`. Write a new ADR, with the next number, that links to the old one and
+  explains what changed. Change the old ADR's status to `Superseded by
+  [ADR-NNN](./adr-NNN-<new>.md).` Leave the rest of it as written, number
+  included.
 - **Never delete an ADR.** The rejected reasoning is part of the record.
 
 ## Prose review
