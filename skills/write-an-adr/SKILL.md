@@ -40,15 +40,15 @@ use a PRD; for an implementation plan use a spec or task breakdown.
    - GitHub Issues, including comments and linked pull requests
    - the branch diff or PR, the implementation, and its tests
    - the relevant RFCs or Ed-Fi specifications
-   - related ADRs in `reference/`, and design docs in `docs/` or
-     `reference/design/`
+   - related ADRs in the repository's ADR location, and design docs in `docs/`
+     or `reference/design/`
 
    Do not state facts from a source you could not read.
 3. **Check for related ADRs.** If this decision amends or replaces an earlier
    one, follow the lifecycle rules below before writing a parallel ADR.
 4. **Ask for what you cannot find.** Usually: the Jira key, the status, which
-   service the decision applies to, the author, and the deciders. Ask in one
-   message, not one question at a time.
+   service the decision applies to, the author, and the deciders. Ask for known
+   gaps in one message, then follow up only on gaps revealed by the answers.
 5. **Assign the number.** Follow [Numbering](#numbering).
 6. **Draft from the template.** Include only the optional sections the decision
    needs.
@@ -60,6 +60,15 @@ use a PRD; for an implementation plan use a spec or task breakdown.
 9. **Stop before committing.** Show the user the file path and a summary. Commit
    only when asked.
 
+## Numbering
+
+- Follow the repository's existing ADR location and filename convention when
+  one exists.
+- Otherwise, use `reference/adr-<NNN>-<topic>.md`.
+- Assign the next number after the highest ADR number in that location on the
+  working tree and `origin/main`. Never reuse a number, including one from a
+  deleted ADR.
+
 ## ADR template
 
 ````markdown
@@ -67,7 +76,7 @@ use a PRD; for an implementation plan use a spec or task breakdown.
 
 **Status:** Proposed | Accepted | Superseded by ADR-XXX | Deprecated \
 **Date:** YYYY-MM-DD \
-**Author:** <Name>, with drafting assistance from Claude Code.
+**Author:** <Name>, with drafting assistance from <AI tool>.
 
 ## Executive summary
 
@@ -78,6 +87,10 @@ the header, the client that broke.>
 that hold the detail, such as [Known limitations](#known-limitations).>
 
 ## Context
+
+### Scope
+
+<State which system, phase, or part of the architecture this decision covers.>
 
 ### <Standard or constraint>
 
@@ -126,8 +139,8 @@ that hold the detail, such as [Known limitations](#known-limitations).>
   off 2026-07-08).`
 - **Author** names the person, never a guess. Take the name from the user or
   `git config user.name`. The line always discloses AI help, naming the tool and
-  its role: `with drafting assistance from Claude Code` or `with analysis
-  assistance from Claude Code`.
+  its role, for example `with drafting assistance from <AI tool>` or `with
+  analysis assistance from <AI tool>`.
 
 ### Optional sections
 
@@ -148,17 +161,17 @@ implementation is the source of truth for them.
 
 ## Writing conventions
 
-- **Be concrete.** For example, when describing an HTTP interaction, name the
-  status code, header, error `title`, configuration key, and limit: `400
-  Malformed Authorization header`, not "an error".
+- **Be concrete.** When describing an HTTP interaction, name the status code,
+  header, error `title`, configuration key, and limit, rather than saying only
+  "an error."
 - **Use backticks** for identifiers, paths, headers, query parameters, and
   literal values.
 - **Write consequences as before and after.** Name who is affected, and say what
   stays the same.
 - **Link precisely.** Link RFCs to the section. Pin source links to a
-  commit SHA and line range. Link Jira keys as
-  `[DMS-NNNN](https://edfi.atlassian.net/browse/DMS-NNNN)`. Use relative links
-  between ADRs and to `docs/`.
+  commit SHA and line range. Link Jira keys to their issue URL, for example
+  `[PROJECT-123](<Jira issue URL>)`. Use relative links between ADRs and to
+  `docs/`.
 - **Use GitHub alerts sparingly**, such as `> [!NOTE]`, to record who confirmed
   a fact and how.
 - **Do not invent** rationale, deciders, sign-off dates, or test coverage. If
@@ -187,7 +200,7 @@ Clearer wording must not change the decision or its limits.
 2. Replace stock openings, promotional adjectives, and repeated summaries with
    the information the reader needs. Do not replace an unsupported claim with an
    invented example or a stronger guarantee. Keep the project's established
-   terms (DMS, CMS, ODS/API, `ContentVersion`).
+   terms and product names.
 3. Compare the edited draft with its sources. Restore any qualifier or caveat
    that was lost. If a factual question is still open, say so rather than
    polishing it away.
@@ -200,14 +213,14 @@ Clearer wording must not change the decision or its limits.
 | "The code is self-documenting" | Code shows what. It does not show which alternatives were rejected or why. |
 | "I'll add the ODS/API comparison later" | The comparison is usually the reason the decision exists. |
 | "The tests section can be approximate" | A test named in an ADR that does not cover the rule misleads every later reader. |
-| "ADRs are overhead" | `adr-oauth-upstream-error-disclosure.md` exists because, in one review cycle, each fix reintroduced the class of defect it replaced. |
+| "ADRs are overhead" | When a defect recurs during review, recording its cause and the rejected alternatives helps prevent later changes from reintroducing it. |
 
 ## Red flags
 
 - A title phrased as a question or a topic instead of a decision
 - A number that repeats, skips ahead, restarts at `001`, or differs between
   filename and title
-- A `docs/adr/` folder in this repository
+- An ADR location or filename that conflicts with the repository's existing convention
 - An author line that is guessed or that omits AI assistance
 - Consequences that do not say what changed for clients
 - Alternatives listed without the reason they lost
@@ -217,13 +230,14 @@ Clearer wording must not change the decision or its limits.
 
 ## Verification
 
-- [ ] The file is in `reference/` and named `adr-<NNN>-<topic>-<JIRA-KEY>.md`
-- [ ] The number is one more than the highest on both the working tree and
-  `origin/main`
-- [ ] The `jira:` frontmatter matches the filename suffix
+- [ ] The file follows the repository's existing ADR location and naming
+  convention; if none exists, use `reference/adr-<NNN>-<topic>.md`
+- [ ] The number is one more than the highest in that location on both the
+  working tree and `origin/main`, and has never been used
 - [ ] The title is `ADR-<NNN>:`, with the filename's number, and states the
   decision as an outcome
-- [ ] Status gives acceptance, implementation state, and scope
+- [ ] Status uses an allowed decision status, and the title or Context states
+  the decision's scope
 - [ ] The Author line names a real person and discloses AI assistance
 - [ ] The executive summary covers both the problem and the decision
 - [ ] Each rejected alternative has a reason

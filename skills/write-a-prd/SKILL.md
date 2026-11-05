@@ -38,7 +38,7 @@ If the mode is unclear, ask one question to classify it before drafting.
 
 1. **Build a source inventory.** List available and missing sources: initial prompt, user answers, existing PRDs, Jira work items, web pages, docs, codebase, tests, analytics, support notes, and release notes. Use Jira/web/document tools when sources are named or accessible. Do not claim information from inaccessible sources.
 2. **Extract current truth.** Summarize what each source establishes. For existing applications, inspect routes, UI flows, API contracts, data models, tests, docs, and deployment/configuration to identify shipped behavior.
-3. **Interview for gaps.** Ask focused questions one at a time. Prefer multiple choice for scope, release goals, personas, must/should/could priorities, constraints, and out-of-scope boundaries. Do not ask for information already available in sources.
+3. **Interview for gaps.** Ask for known gaps in one message, then follow up only on gaps revealed by the answers. Prefer multiple choice for scope, release goals, personas, must/should/could priorities, constraints, and out-of-scope boundaries. Do not ask for information already available in sources.
 4. **Propose PRD shape.** Before writing a large PRD, state the intended sections, source assumptions, and any unresolved questions. Get approval when the structure or scope is significant.
 5. **Draft or edit.** Use the selected mode's rules below. Preserve the user's requested destination: existing file, new file, issue, or chat draft.
 6. **Self-review.** Check for unsupported claims, contradictions, missing NFRs, vague requirements, absent out-of-scope items, and unresolved open questions.
@@ -47,18 +47,18 @@ If the mode is unclear, ask one question to classify it before drafting.
 
 Use the existing organization's PRD structure when one exists. Otherwise, use this structure, adapted to the product:
 
-1. **Title and metadata**: status, owner, product/repository, related Jira project or issue list, source references.
+1. **Title and metadata**: status, owner, product/repository, optional Jira project or issue references when accessible, and source references. Link sources readers can access; for public PRDs, do not rely on private Jira or Slack references.
 2. **1. Product overview**: what the product is, who it serves, and why it exists.
-3. **1.1 Strategic alignment**: business goals, market drivers, policy/regulatory drivers, and release objectives.
-4. **1.2 Target users and personas**: motivations, technical depth, pain points, and success criteria.
+3. **1.1 Strategic alignment and success criteria**: business goals, market drivers, policy/regulatory drivers, release objectives, and measurable outcomes.
+4. **1.2 Target users and personas**: motivations, technical depth, and pain points.
 5. **1.3 Jobs to be done / user journeys**: "When / I want / so that" statements plus variations.
 6. **2. Enterprise or system context**: external systems, identity, data stores, integrations, deployment boundaries, and diagrams when useful.
 7. **3. Functional requirements**: stable IDs, clear SHALL/SHOULD/MAY language, grouped by capability. DO NOT USE TABLES, USE BULLETED LISTS.
 8. **4. Non-functional requirements**: compatibility, security, privacy, accessibility, observability, reliability, performance, operations, SDLC, compliance. DO NOT USE TABLES, USE BULLETED LISTS.
-9. **5. System architecture**: component table, runtime/deployment targets, data ownership, integration points. USE A TABLE FOR ARCHITECTURE COMPONENTS.
+9. **5. System architecture**: a table of components, capabilities, responsibilities, data ownership, and integration points. Defer implementation and deployment choices to an ADR or design document.
 10. **6. Out of scope and known limitations**: explicit exclusions, deferred work, assumptions, risks.
-12. **7. Open Questions and Decision Log**: unresolved product decisions and chosen trade-offs.
-11. **8. Glossary**: product-specific terms, acronyms, and overloaded words.
+11. **7. Open questions**: unresolved product questions; record architectural decisions in ADRs.
+12. **8. Glossary**: product-specific terms, acronyms, and overloaded words.
 
 ## Mode-Specific Rules
 
@@ -150,7 +150,6 @@ Then draft the PRD using the approved section structure.
 | Omitting NFRs | Product may be unbuildable or unshippable | Review security, reliability, observability, compatibility, accessibility, operations, and SDLC. |
 | Over-specifying file paths/code | PRD becomes brittle | Keep product requirements stable; put implementation specifics in design docs or plans. |
 | Ignoring edge cases | Product may fail in uncommon scenarios | Include edge cases in requirements and test plans. |
-| Excessive implementation detail | PRD becomes tightly coupled to current code | Focus on product behavior and requirements; move implementation specifics to design docs. |
 
 ## Final Self-Review
 
