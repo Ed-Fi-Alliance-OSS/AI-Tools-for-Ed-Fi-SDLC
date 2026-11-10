@@ -150,10 +150,32 @@ Add these only when the decision calls for them:
 | --- | --- |
 | `## Decision drivers` | Several options were viable and the criteria for choosing need to be explicit. |
 | `## Considered options` | The trade-offs are too deep for a table row. Use `### Option N — <name>` with **Pros:** and **Cons:** bullets, and mark the winner `(CHOSEN)`. Replaces `## Alternatives considered`. |
-| `## Scope boundaries` | It is not obvious which services, endpoints, or backends are covered. |
+| `## Scope boundaries` | The decision's rules apply to some services, endpoints, or backends and not others, and a reader could reasonably guess wrong. See [Scope versus scope boundaries](#scope-versus-scope-boundaries). |
 | `## Known deviations and open items` | Related pre-existing defects were deliberately left out of scope. Link each Jira ticket. |
 | `## Open question` | Something must be confirmed before the decision is fully safe. Say what, and what happens if the answer is no. |
 | `## Defects found and their lessons` | Review found the same class of mistake more than once. Number each defect and end it with a bold **Lesson:**. |
+
+#### Scope versus scope boundaries
+
+Every ADR has `### Scope` under `## Context`. Only some need `## Scope
+boundaries`.
+
+- **`### Scope`** (required, in `## Context`) names the subject of the decision
+  in a sentence or two: which system, phase, or part of the architecture it
+  addresses. It orients the reader before they reach the decision.
+- **`## Scope boundaries`** (optional, after `## Decision`) lists exactly where
+  the decision's rules do and do not apply, item by item: services, endpoints,
+  or backends that are covered, and those that are excluded, with the reason for
+  each exclusion. It exists to stop a later engineer from extending the rule to
+  an excluded component, or assuming an included one is exempt.
+
+Add `## Scope boundaries` when the in/out line is not obvious from `### Scope`
+alone, for example when the rule covers the read path but not the write path,
+one backend but not its siblings, or when a neighboring component behaves
+differently on purpose. If `### Scope` already makes the coverage clear, do not
+add the section. Do not repeat `### Scope` under another heading, and do not use
+`## Scope boundaries` for known gaps or deferred defects; those belong in
+`## Known limitations` or `## Known deviations and open items`.
 
 Skip `## Tests` when the ADR describes architecture rather than a code contract.
 In that case, say near the top that code-level details are left out and that the
